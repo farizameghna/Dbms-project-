@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inventory Management Login</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="loginContainer"></div>
+  <div id="registerContainer"></div>
+  <div id="dashboardContainer"></div>
+
+  <script>
+    // Load partials
+    async function loadHTML(id, file) {
+      const res = await fetch(file);
+      const html = await res.text();
+      document.getElementById(id).innerHTML = html;
+    }
+
+    // Load all sections
+    loadHTML("loginContainer", "login.html");
+    loadHTML("registerContainer", "register.html");
+    loadHTML("dashboardContainer", "dashboard.html");
+  </script>
+
+  <script src="script.js"></script>
+</body>
+</html>
