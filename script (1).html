@@ -1,0 +1,65 @@
+function togglePages() {
+  document.getElementById("loginPage").classList.toggle("active");
+  document.getElementById("registerPage").classList.toggle("active");
+}
+
+function register() {
+  const user = document.getElementById("regUser").value;
+  const pass = document.getElementById("regPass").value;
+  if (!user || !pass) return alert("Enter both username and password.");
+  localStorage.setItem(user, pass);
+  alert("Registration successful. You can now log in.");
+  togglePages();
+}
+
+function login() {
+  const user = document.getElementById("loginUser").value;
+  const pass = document.getElementById("loginPass").value;
+  const stored = localStorage.getItem(user);
+  if (stored === pass) {
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+  } else {
+    alert("Invalid credentials");
+  }
+}
+
+function showDataSection() {
+  document.getElementById("dataSection").style.display = "block";
+}
+
+function addProduct() {
+  const animalType = document.getElementById("animalType").value;
+  const cutType = document.getElementById("cutType").value;
+  const processingDate = document.getElementById("processingDate").value;
+  const shelfLife = document.getElementById("shelfLife").value;
+  const supplier = document.getElementById("supplier").value;
+
+  if (!animalType || !cutType || !processingDate || !shelfLife || !supplier) {
+    alert("Fill all fields!");
+    return;
+  }
+
+  const tbody = document.querySelector("#productTable tbody");
+  const row = document.createElement("tr");
+  row.innerHTML = `
+    <td>${animalType}</td>
+    <td>${cutType}</td>
+    <td>${processingDate}</td>
+    <td>${shelfLife}</td>
+    <td>${supplier}</td>
+    <td><button class="delete-btn" onclick="deleteRow(this)">Delete</button></td>
+  `;
+  tbody.appendChild(row);
+
+  document.getElementById("animalType").value = "";
+  document.getElementById("cutType").value = "";
+  document.getElementById("processingDate").value = "";
+  document.getElementById("shelfLife").value = "";
+  document.getElementById("supplier").value = "";
+}
+
+function deleteRow(button) {
+  const row = button.closest("tr");
+  row.remove();
+}
