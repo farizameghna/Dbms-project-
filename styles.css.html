@@ -1,0 +1,162 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f4f6f9;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+#loginPage, #registerPage {
+  display: none;
+  max-width: 400px;
+  margin: 100px auto;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+#loginPage.active, #registerPage.active {
+  display: block;
+}
+
+h2 {
+  text-align: center;
+  color: #002b5c;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  background-color: #002b5c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.toggle {
+  text-align: center;
+  margin-top: 10px;
+  cursor: pointer;
+  color: #0077cc;
+}
+
+#dashboard {
+  display: none;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+h1 {
+  font-size: 2rem;
+  color: #002b5c;
+}
+
+p.subtitle {
+  color: #555;
+  margin-top: 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  border: 2px solid #d4eaff;
+  padding: 20px;
+  border-radius: 12px;
+  background-color: #f9fcff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: scale(1.02);
+}
+
+.icon {
+  font-size: 2rem;
+  color: #ff7b00;
+  margin-bottom: 10px;
+}
+
+.card h2 {
+  font-size: 1.1rem;
+  color: #002b5c;
+  margin-bottom: 10px;
+}
+
+.card p {
+  color: #444;
+  font-size: 0.95rem;
+}
+
+#dataSection {
+  margin-top: 40px;
+  display: none;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  margin-bottom: 20px;
+}
+
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ccc;
+}
+
+th {
+  background-color: #002b5c;
+  color: white;
+}
+
+.form input {
+  margin: 5px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.form button {
+  padding: 8px 14px;
+  background-color: #002b5c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.delete-btn {
+  background-color: #c0392b;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.section-title {
+  color: #002b5c;
+  font-size: 1.3rem;
+  margin: 20px 0 10px;
+}
