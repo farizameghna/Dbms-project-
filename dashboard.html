@@ -1,0 +1,29 @@
+<div id="dashboard">
+  <header>
+    <h1>Inventory Management for Meat-Based Products</h1>
+    <p class="subtitle">Track meat products from processing to distribution, minimizing spoilage and waste</p>
+  </header>
+
+  <section class="grid">
+    <div class="card" onclick="showDataSection()">
+      <div class="icon">📝</div>
+      <h2>Detailed Product Data</h2>
+      <p>Animal type, cut type, processing date, shelf life, packaging, supplier info.</p>
+    </div>
+    <div class="card"><div class="icon">🐄</div><h2>Livestock and Cut Monitoring</h2><p>Record incoming livestock or cuts, monitor transition across processing units.</p></div>
+    <div class="card"><div class="icon">🏬</div><h2>Stock Level Monitoring</h2><p>Track stock across storage units, manage restocking and prevent overstock.</p></div>
+    <div class="card"><div class="icon">♻️</div><h2>FIFO/FEFO Rotation</h2><p>Track expiration dates and batch numbers to minimize waste and spoilage.</p></div>
+    <div class="card"><div class="icon">🌡️</div><h2>Sensor Integration</h2><p>Monitor temperature and humidity in storage to ensure meat quality.</p></div>
+    <div class="card"><div class="icon">📊</div><h2>Processing Yield Analysis</h2><p>Log yields from processing activities, track trimmings, bones, and waste.</p></div>
+  </section>
+
+  <div id="dataSection"></div>
+
+  <script>
+    fetch("table.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("dataSection").innerHTML = html;
+      });
+  </script>
+</div>
