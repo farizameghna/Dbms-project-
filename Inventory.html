@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meat Inventory - Inventory</title>
+  <style>
+    body{font-family: Arial, sans-serif;margin:20px;}
+    h1{color:#333;}
+    nav a{margin-right:15px;text-decoration:none;color:#007bff;}
+    table{border-collapse:collapse;width:100%;margin-top:20px;}
+    th,td{border:1px solid #ccc;padding:8px;text-align:left;}
+    th{background:#f4f4f4;}
+    button{padding:5px 10px;margin:2px;cursor:pointer;}
+    .msg{position:fixed;bottom:20px;right:20px;background:#222;color:#fff;
+         padding:10px 15px;border-radius:5px;font-size:14px;opacity:0.9;z-index:1000;}
+  </style>
+</head>
+<body>
+
+  <h1>Meat Inventory - Inventory</h1>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="products.html">Products</a>
+    <a href="inventory.html">Inventory</a>
+    <a href="stock.html">Stock</a>
+    <a href="storage.html">Storage</a>
+    <a href="yield.html">Yield</a>
+    <a href="recalls.html">Recalls</a>
+    <a href="users.html">Users</a>
+  </nav>
+
+  <!-- Form to add inventory record -->
+  <h2>Add Inventory Record</h2>
+  <form id="inventoryForm">
+    <input type="hidden" id="editIndex">
+    <label>Product ID: <input type="text" id="iProductId" required></label>
+    <label>Quantity: <input type="number" id="iQuantity" required></label>
+    <label>Location: <input type="text" id="iLocation" required></label>
+    <label>Status: <input type="text" id="iStatus" placeholder="In Stock/Out of Stock"></label>
+    <button type="submit">Save</button>
+  </form>
+
+  <!-- Inventory table -->
+  <h2>Inventory List</h2>
+  <table id="inventoryTable">
+    <thead>
+      <tr>
+        <th>Product ID</th>
+        <th>Quantity</th>
+        <th>Location</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+// ==================
+// Local Storage Data
+// ==================
+let Store = JSON.parse(localStorage.getItem('meatInventory')) || {products:[],inventory:[]};
+if(!Store.inventory) Store.inventory = [];
+function saveStore(){ localStorage.setItem('meatInventory', JSON.stringify(Store)); }
+
+// ==================
+// Feedback Message
+// ==================
+function msg(text){
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.className = 'msg';
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 3000);
+}
+
+// ==================
+// Render Inventory
+// ==================
+function renderInventory(){
+  const tbody = document.querySelector('#inventoryTable tbody');
+  tbody.innerHTML = '';
+  Store.inventory.forEach((inv,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${inv.productId}</td>
+      <td>${inv.quantity}</td>
+      <td>${inv.location}</td>
+      <td>${inv.status}</td>
+      <td>
+        <button onclick="editInventory(${i})">Edit</button>
+        <button onclick="deleteInventory(${i})">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ==================
+// Add / Edit Inventory
+// ==================
+document.getElementById('inventoryForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const productId = document.getElementById('iProductId').value.trim();
+  const quantity = document.getElementById('iQuantity').value;
+  const location = document.getElementById('iLocation').value.trim();
+  const status = document.getElementById('iStatus').value.trim();
+  const editIndex = document.getElementById('editIndex').value;
+
+  if(editIndex===''){
+    Store.inventory.push({productId, quantity, location, status});
+    msg('Inventory record added');
+  }else{
+    Store.inventory[editIndex] = {productId, quantity, location, status};
+    msg('Inventory record updated');
+  }
+  saveStore();
+  renderInventory();
+  e.target.reset();
+  document.getElementById('editIndex').value='';
+});
+
+// ==================
+// Edit / Delete
+// ==================
+function editInventory(i){
+  const inv = Store.inventory[i];
+  document.getElementById('iProductId').value = inv.productId;
+  document.getElementById('iQuantity').value = inv.quantity;
+  document.getElementById('iLocation').value = inv.location;
+  document.getElementById('iStatus').value = inv.status;
+  document.getElementById('editIndex').value = i;
+}
+
+function deleteInventory(i){
+  if(confirm('Delete this inventory record?')){
+    Store.inventory.splice(i,1);
+    saveStore();
+    renderInventory();
+    msg('Inventory record deleted');
+  }
+}
+
+// ==================
+// Init
+// ==================
+window.addEventListener('load', renderInventory);
+</script>
+
+</body>
+</html>
