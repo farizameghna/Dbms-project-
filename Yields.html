@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meat Inventory - Yield</title>
+  <style>
+    body{font-family: Arial, sans-serif;margin:20px;}
+    h1{color:#333;}
+    nav a{margin-right:15px;text-decoration:none;color:#007bff;}
+    table{border-collapse:collapse;width:100%;margin-top:20px;}
+    th,td{border:1px solid #ccc;padding:8px;text-align:left;}
+    th{background:#f4f4f4;}
+    button{padding:5px 10px;margin:2px;cursor:pointer;}
+    .msg{position:fixed;bottom:20px;right:20px;background:#222;color:#fff;
+         padding:10px 15px;border-radius:5px;font-size:14px;opacity:0.9;z-index:1000;}
+  </style>
+</head>
+<body>
+
+  <h1>Meat Inventory - Yield</h1>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="products.html">Products</a>
+    <a href="inventory.html">Inventory</a>
+    <a href="stock.html">Stock</a>
+    <a href="storage.html">Storage</a>
+    <a href="yield.html">Yield</a>
+    <a href="recalls.html">Recalls</a>
+    <a href="users.html">Users</a>
+  </nav>
+
+  <!-- Form to add yield record -->
+  <h2>Add Yield Record</h2>
+  <form id="yieldForm">
+    <input type="hidden" id="editIndex">
+    <label>Product ID: <input type="text" id="yProductId" required></label>
+    <label>Batch No: <input type="text" id="yBatch" required></label>
+    <label>Input Weight (kg): <input type="number" id="yInput" required></label>
+    <label>Output Weight (kg): <input type="number" id="yOutput" required></label>
+    <label>Yield %: <input type="number" id="yPercent" step="0.01" readonly></label>
+    <button type="submit">Save</button>
+  </form>
+
+  <!-- Yield table -->
+  <h2>Yield List</h2>
+  <table id="yieldTable">
+    <thead>
+      <tr>
+        <th>Product ID</th>
+        <th>Batch</th>
+        <th>Input Weight</th>
+        <th>Output Weight</th>
+        <th>Yield %</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+// ==================
+// Local Storage Data
+// ==================
+let Store = JSON.parse(localStorage.getItem('meatInventory')) || {products:[],inventory:[],stock:[],storage:[],yield:[]};
+if(!Store.yield) Store.yield = [];
+function saveStore(){ localStorage.setItem('meatInventory', JSON.stringify(Store)); }
+
+// ==================
+// Feedback Message
+// ==================
+function msg(text){
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.className = 'msg';
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 3000);
+}
+
+// ==================
+// Render Yield
+// ==================
+function renderYield(){
+  const tbody = document.querySelector('#yieldTable tbody');
+  tbody.innerHTML = '';
+  Store.yield.forEach((y,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${y.productId}</td>
+      <td>${y.batch}</td>
+      <td>${y.input}</td>
+      <td>${y.output}</td>
+      <td>${y.percent}</td>
+      <td>
+        <button onclick="editYield(${i})">Edit</button>
+        <button onclick="deleteYield(${i})">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ==================
+// Add / Edit Yield
+// ==================
+document.getElementById('yieldForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const productId = document.getElementById('yProductId').value.trim();
+  const batch = document.getElementById('yBatch').value.trim();
+  const input = parseFloat(document.getElementById('yInput').value);
+  const output = parseFloat(document.getElementById('yOutput').value);
+  const percent = ((output/input)*100).toFixed(2);
+  document.getElementById('yPercent').value = percent;
+
+  const editIndex = document.getElementById('editIndex').value;
+
+  if(editIndex===''){
+    Store.yield.push({productId,batch,input,output,percent});
+    msg('Yield record added');
+  }else{
+    Store.yield[editIndex] = {productId,batch,input,output,percent};
+    msg('Yield record updated');
+  }
+  saveStore();
+  renderYield();
+  e.target.reset();
+  document.getElementById('editIndex').value='';
+});
+
+// ==================
+// Edit / Delete
+// ==================
+function editYield(i){
+  const y = Store.yield[i];
+  document.getElementById('yProductId').value = y.productId;
+  document.getElementById('yBatch').value = y.batch;
+  document.getElementById('yInput').value = y.input;
+  document.getElementById('yOutput').value = y.output;
+  document.getElementById('yPercent').value = y.percent;
+  document.getElementById('editIndex').value = i;
+}
+
+function deleteYield(i){
+  if(confirm('Delete this yield record?')){
+    Store.yield.splice(i,1);
+    saveStore();
+    renderYield();
+    msg('Yield record deleted');
+  }
+}
+
+// ==================
+// Auto-calc Yield %
+// ==================
+document.getElementById('yInput').addEventListener('input', calcYield);
+document.getElementById('yOutput').addEventListener('input', calcYield);
+
+function calcYield(){
+  const input = parseFloat(document.getElementById('yInput').value);
+  const output = parseFloat(document.getElementById('yOutput').value);
+  if(input>0 && output>=0){
+    document.getElementById('yPercent').value = ((output/input)*100).toFixed(2);
+  }
+}
+
+// ==================
+// Init
+// ==================
+window.addEventListener('load', renderYield);
+</script>
+
+</body>
+</html>
