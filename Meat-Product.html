@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meat Inventory - Products</title>
+  <style>
+    body{font-family: Arial, sans-serif;margin:20px;}
+    h1{color:#333;}
+    nav a{margin-right:15px;text-decoration:none;color:#007bff;}
+    table{border-collapse:collapse;width:100%;margin-top:20px;}
+    th,td{border:1px solid #ccc;padding:8px;text-align:left;}
+    th{background:#f4f4f4;}
+    button{padding:5px 10px;margin:2px;cursor:pointer;}
+    .msg{position:fixed;bottom:20px;right:20px;background:#222;color:#fff;
+         padding:10px 15px;border-radius:5px;font-size:14px;opacity:0.9;z-index:1000;}
+  </style>
+</head>
+<body>
+
+  <h1>Meat Inventory - Products</h1>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="products.html">Products</a>
+    <a href="inventory.html">Inventory</a>
+    <a href="stock.html">Stock</a>
+    <a href="storage.html">Storage</a>
+    <a href="yield.html">Yield</a>
+    <a href="recalls.html">Recalls</a>
+    <a href="users.html">Users</a>
+  </nav>
+
+  <!-- Form to add product -->
+  <h2>Add Product</h2>
+  <form id="productForm">
+    <input type="hidden" id="editIndex">
+    <label>Name: <input type="text" id="pName" required></label>
+    <label>Category: <input type="text" id="pCategory" required></label>
+    <label>Processing Date: <input type="date" id="pDate" required></label>
+    <label>Shelf Life (days): <input type="number" id="pShelf" value="30"></label>
+    <button type="submit">Save</button>
+  </form>
+
+  <!-- Products table -->
+  <h2>Product List</h2>
+  <table id="productTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Category</th>
+        <th>Processing Date</th>
+        <th>Shelf Life</th>
+        <th>Expiry Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+// ==================
+// Local Storage Data
+// ==================
+let Store = JSON.parse(localStorage.getItem('meatInventory')) || {products:[]};
+function saveStore(){ localStorage.setItem('meatInventory', JSON.stringify(Store)); }
+
+// ==================
+// Feedback Message
+// ==================
+function msg(text){
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.className = 'msg';
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 3000);
+}
+
+// ==================
+// Render Products
+// ==================
+function renderProducts(){
+  const tbody = document.querySelector('#productTable tbody');
+  tbody.innerHTML = '';
+  Store.products.forEach((p,i)=>{
+    const expiry = (()=>{ 
+      const d=new Date(p.processingDate); 
+      d.setDate(d.getDate()+Number(p.shelfLifeDays||30)); 
+      return d.toISOString().slice(0,10); 
+    })();
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.name}</td>
+      <td>${p.category}</td>
+      <td>${p.processingDate}</td>
+      <td>${p.shelfLifeDays}</td>
+      <td>${expiry}</td>
+      <td>
+        <button onclick="editProduct(${i})">Edit</button>
+        <button onclick="deleteProduct(${i})">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ==================
+// Add / Edit Product
+// ==================
+document.getElementById('productForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const name = document.getElementById('pName').value.trim();
+  const category = document.getElementById('pCategory').value.trim();
+  const processingDate = document.getElementById('pDate').value;
+  const shelfLifeDays = document.getElementById('pShelf').value;
+  const editIndex = document.getElementById('editIndex').value;
+
+  if(editIndex===''){
+    Store.products.push({name, category, processingDate, shelfLifeDays});
+    msg('Product added');
+  }else{
+    Store.products[editIndex] = {name, category, processingDate, shelfLifeDays};
+    msg('Product updated');
+  }
+  saveStore();
+  renderProducts();
+  e.target.reset();
+  document.getElementById('editIndex').value='';
+});
+
+// ==================
+// Edit / Delete
+// ==================
+function editProduct(i){
+  const p = Store.products[i];
+  document.getElementById('pName').value = p.name;
+  document.getElementById('pCategory').value = p.category;
+  document.getElementById('pDate').value = p.processingDate;
+  document.getElementById('pShelf').value = p.shelfLifeDays;
+  document.getElementById('editIndex').value = i;
+}
+
+function deleteProduct(i){
+  if(confirm('Delete this product?')){
+    Store.products.splice(i,1);
+    saveStore();
+    renderProducts();
+    msg('Product deleted');
+  }
+}
+
+// ==================
+// Init
+// ==================
+window.addEventListener('load', renderProducts);
+</script>
+
+</body>
+</html>
