@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meat Inventory - Users</title>
+  <style>
+    body{font-family: Arial, sans-serif;margin:20px;}
+    h1{color:#333;}
+    nav a{margin-right:15px;text-decoration:none;color:#007bff;}
+    table{border-collapse:collapse;width:100%;margin-top:20px;}
+    th,td{border:1px solid #ccc;padding:8px;text-align:left;}
+    th{background:#f4f4f4;}
+    button{padding:5px 10px;margin:2px;cursor:pointer;}
+    .msg{position:fixed;bottom:20px;right:20px;background:#222;color:#fff;
+         padding:10px 15px;border-radius:5px;font-size:14px;opacity:0.9;z-index:1000;}
+  </style>
+</head>
+<body>
+
+  <h1>Meat Inventory - Users</h1>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="products.html">Products</a>
+    <a href="inventory.html">Inventory</a>
+    <a href="stock.html">Stock</a>
+    <a href="storage.html">Storage</a>
+    <a href="yield.html">Yield</a>
+    <a href="recalls.html">Recalls</a>
+    <a href="users.html">Users</a>
+  </nav>
+
+  <!-- Add User Form -->
+  <h2>Add User</h2>
+  <form id="userForm">
+    <input type="hidden" id="editIndex">
+    <label>Username: <input type="text" id="uName" required></label>
+    <label>Password: <input type="password" id="uPass" required></label>
+    <button type="submit">Save</button>
+  </form>
+
+  <!-- Users Table -->
+  <h2>User List</h2>
+  <table id="userTable">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Password</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+// ==================
+// Local Storage Data
+// ==================
+let Store = JSON.parse(localStorage.getItem('meatUsers')) || {users:[]};
+if(!Store.users) Store.users = [];
+function saveStore(){ localStorage.setItem('meatUsers', JSON.stringify(Store)); }
+
+// ==================
+// Feedback Message
+// ==================
+function msg(text){
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.className = 'msg';
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 3000);
+}
+
+// ==================
+// Render Users
+// ==================
+function renderUsers(){
+  const tbody = document.querySelector('#userTable tbody');
+  tbody.innerHTML = '';
+  Store.users.forEach((u,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${u.username}</td>
+      <td>${u.password}</td>
+      <td>
+        <button onclick="editUser(${i})">Edit</button>
+        <button onclick="deleteUser(${i})">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ==================
+// Add / Edit User
+// ==================
+document.getElementById('userForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const username = document.getElementById('uName').value.trim();
+  const password = document.getElementById('uPass').value.trim();
+  const editIndex = document.getElementById('editIndex').value;
+
+  if(editIndex===''){
+    if(Store.users.find(u=>u.username===username)){ msg('Username exists'); return; }
+    Store.users.push({username,password});
+    msg('User added');
+  }else{
+    Store.users[editIndex] = {username,password};
+    msg('User updated');
+  }
+  saveStore();
+  renderUsers();
+  e.target.reset();
+  document.getElementById('editIndex').value='';
+});
+
+// ==================
+// Edit / Delete
+// ==================
+function editUser(i){
+  const u = Store.users[i];
+  document.getElementById('uName').value = u.username;
+  document.getElementById('uPass').value = u.password;
+  document.getElementById('editIndex').value = i;
+}
+
+function deleteUser(i){
+  if(confirm('Delete this user?')){
+    Store.users.splice(i,1);
+    saveStore();
+    renderUsers();
+    msg('User deleted');
+  }
+}
+
+// ==================
+// Init
+// ==================
+window.addEventListener('load', renderUsers);
+</script>
+
+</body>
+</html>
