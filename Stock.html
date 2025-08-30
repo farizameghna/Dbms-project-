@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meat Inventory - Stock</title>
+  <style>
+    body{font-family: Arial, sans-serif;margin:20px;}
+    h1{color:#333;}
+    nav a{margin-right:15px;text-decoration:none;color:#007bff;}
+    table{border-collapse:collapse;width:100%;margin-top:20px;}
+    th,td{border:1px solid #ccc;padding:8px;text-align:left;}
+    th{background:#f4f4f4;}
+    button{padding:5px 10px;margin:2px;cursor:pointer;}
+    .msg{position:fixed;bottom:20px;right:20px;background:#222;color:#fff;
+         padding:10px 15px;border-radius:5px;font-size:14px;opacity:0.9;z-index:1000;}
+  </style>
+</head>
+<body>
+
+  <h1>Meat Inventory - Stock</h1>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="products.html">Products</a>
+    <a href="inventory.html">Inventory</a>
+    <a href="stock.html">Stock</a>
+    <a href="storage.html">Storage</a>
+    <a href="yield.html">Yield</a>
+    <a href="recalls.html">Recalls</a>
+    <a href="users.html">Users</a>
+  </nav>
+
+  <!-- Form to add stock -->
+  <h2>Add Stock</h2>
+  <form id="stockForm">
+    <input type="hidden" id="editIndex">
+    <label>Product ID: <input type="text" id="sProductId" required></label>
+    <label>Batch No: <input type="text" id="sBatch" required></label>
+    <label>Quantity: <input type="number" id="sQuantity" required></label>
+    <label>Expiry Date: <input type="date" id="sExpiry" required></label>
+    <button type="submit">Save</button>
+  </form>
+
+  <!-- Stock table -->
+  <h2>Stock List</h2>
+  <table id="stockTable">
+    <thead>
+      <tr>
+        <th>Product ID</th>
+        <th>Batch No</th>
+        <th>Quantity</th>
+        <th>Expiry Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+// ==================
+// Local Storage Data
+// ==================
+let Store = JSON.parse(localStorage.getItem('meatInventory')) || {products:[],inventory:[],stock:[]};
+if(!Store.stock) Store.stock = [];
+function saveStore(){ localStorage.setItem('meatInventory', JSON.stringify(Store)); }
+
+// ==================
+// Feedback Message
+// ==================
+function msg(text){
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.className = 'msg';
+  document.body.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 3000);
+}
+
+// ==================
+// Render Stock
+// ==================
+function renderStock(){
+  const tbody = document.querySelector('#stockTable tbody');
+  tbody.innerHTML = '';
+  Store.stock.forEach((st,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${st.productId}</td>
+      <td>${st.batch}</td>
+      <td>${st.quantity}</td>
+      <td>${st.expiry}</td>
+      <td>
+        <button onclick="editStock(${i})">Edit</button>
+        <button onclick="deleteStock(${i})">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ==================
+// Add / Edit Stock
+// ==================
+document.getElementById('stockForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const productId = document.getElementById('sProductId').value.trim();
+  const batch = document.getElementById('sBatch').value.trim();
+  const quantity = document.getElementById('sQuantity').value;
+  const expiry = document.getElementById('sExpiry').value;
+  const editIndex = document.getElementById('editIndex').value;
+
+  if(editIndex===''){
+    Store.stock.push({productId, batch, quantity, expiry});
+    msg('Stock record added');
+  }else{
+    Store.stock[editIndex] = {productId, batch, quantity, expiry};
+    msg('Stock record updated');
+  }
+  saveStore();
+  renderStock();
+  e.target.reset();
+  document.getElementById('editIndex').value='';
+});
+
+// ==================
+// Edit / Delete
+// ==================
+function editStock(i){
+  const st = Store.stock[i];
+  document.getElementById('sProductId').value = st.productId;
+  document.getElementById('sBatch').value = st.batch;
+  document.getElementById('sQuantity').value = st.quantity;
+  document.getElementById('sExpiry').value = st.expiry;
+  document.getElementById('editIndex').value = i;
+}
+
+function deleteStock(i){
+  if(confirm('Delete this stock record?')){
+    Store.stock.splice(i,1);
+    saveStore();
+    renderStock();
+    msg('Stock record deleted');
+  }
+}
+
+// ==================
+// Init
+// ==================
+window.addEventListener('load', renderStock);
+</script>
+
+</body>
+</html>
