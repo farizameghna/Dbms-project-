@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Meat Inventory Management — FIFO/FEFO + Sidebar Controls</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+/* ==========================
+   Styling: theme & layout
+   ========================== */
+:root{
+  --brand:#9b1c1c;
+  --brand-2:#b63232;
+  --bg:#f4f6f9;
+  --card:#ffffff;
+  --muted:#666;
+  --sidebar-width:280px;
+  --radius:12px;
+  --maxwidth:1200px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,Segoe UI,system-ui,-apple-system,Helvetica,Arial;background:var(--bg);color:#222}
+body{display:flex;min-height:100vh;overflow:hidden}
+
+/* Sidebar */
+.sidebar{
+  width:var(--sidebar-width);min-width:220px;
+  background:linear-gradient(180deg,var(--brand-2),var(--brand));
+  color:#fff;padding:1rem;display:flex;flex-direction:column;gap:1rem;position:sticky;top:0;height:100vh;overflow:auto;
+  box-shadow:6px 0 24px rgba(0,0,0,.08);z-index:20;
+}
+.brand{display:flex;gap:.6rem;align-items:center}
+.brand h1{margin:0;font-size:1.15rem;font-weight:800}
+.brand p{margin:0;opacity:.95;font-size:.9rem}
+.nav{display:flex;flex-direction:column;gap:.25rem;margin-top:.6rem}
+.nav a{padding:.66rem .8rem;color:#fff;text-decoration:none;font-weight:700;border-radius:.6rem;cursor:pointer;user-select:none;display:flex;align-items:center;gap:.6rem}
+.nav a:hover{background:rgba(255,255,255,.06)}
+.nav a.active-link{background:rgba(0,0,0,.14)}
+.small-muted{color:rgba(255,255,255,.9);font-size:.9rem}
+
+/* controls under nav (REMOVED BUTTONS kept hidden) */
+.side-controls{display:none}
+
+/* login page (full-screen) */
+#loginScreen{
+  position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg,var(--brand-2),var(--brand));
+  z-index:9999;
+}
+.login-card{
+  width:min(420px,92vw); background:#fff; color:#222; border-radius:16px; padding:1.2rem 1.2rem 1.2rem;
+  box-shadow:0 18px 50px rgba(0,0,0,.25)
+}
+.login-card h2{margin:0 0 .25rem 0}
+.login-card p{margin:.1rem 0 .9rem 0;color:#555}
+.login-grid{display:grid;gap:.6rem}
+.login-row{display:flex;gap:.5rem}
+.login-card input{width:100%;padding:.65rem .7rem;border-radius:10px;border:1px solid #ddd;background:#fff}
+.login-card button{flex:1;padding:.7rem .9rem;border-radius:10px;border:none;background:var(--brand-2);color:#fff;font-weight:800;cursor:pointer}
+.login-card button.secondary{background:#39424e}
+.login-note{font-size:.86rem;color:#666;margin-top:.4rem}
+
+/* main content */
+.main-wrap{flex:1;overflow:auto;padding:1rem;max-width:calc(100% - var(--sidebar-width))}
+.container{max-width:var(--maxwidth);margin:0 auto;padding-bottom:4rem}
+.topbar{display:none}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+.card{background:var(--card);padding:1rem;border-radius:var(--radius);box-shadow:0 8px 20px rgba(0,0,0,.06)}
+.grid{display:grid;gap:1rem}
+.grid-2{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.toolbar{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between;margin:.5rem 0 1rem}
+.toolbar .left,.toolbar .right{display:flex;gap:.5rem;align-items:center}
+
+/* tables */
+table{width:100%;border-collapse:collapse;background:var(--card);box-shadow:0 2px 6px rgba(0,0,0,.06);border-radius:.75rem;overflow:hidden;margin-top:.5rem}
+thead th{background:var(--brand-2);color:#fff;padding:.8rem;text-align:center}
+th,td{padding:.65rem .6rem;border-bottom:1px solid #eee;text-align:center}
+tr:nth-child(even) td{background:#fafafa}
+button.btn{border:none;background:var(--brand-2);color:#fff;padding:.5rem .8rem;border-radius:.6rem;cursor:pointer;font-weight:700}
+button.secondary{background:#39424e}
+button.warn{background:#c0392b}
+input,select{padding:.5rem .6rem;border:1px solid #ddd;border-radius:.5rem;background:#fff}
+label{font-size:.9rem}
+.pill{display:inline-block;padding:.2rem .5rem;border-radius:999px;font-size:.85rem;font-weight:700}
+.pill.low{background:#fff3cd;color:#8a6d3b}
+.pill.high{background:#d9edf7;color:#31708f}
+.pill.out{background:#f2dede;color:#a94442}
+.pill.over{background:#e2f7e2;color:#2d8a34}
+.pill.recall{background:#000;color:#fff}
+
+canvas{max-height:280px}
+
+/* modal */
+dialog{border:none;border-radius:12px;padding:0;box-shadow:0 10px 40px rgba(0,0,0,.25);width:min(840px,94vw)}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+.modal-head{background:var(--brand-2);color:#fff;padding:.9rem 1rem;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center}
+.modal-body{padding:1rem}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
+.form-grid .full{grid-column:1/-1}
+
+/* photos on home */
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.6rem}
+.photo{border-radius:10px;overflow:hidden;height:160px;display:block;background:#eee;position:relative}
+.photo img{width:100%;height:100%;object-fit:cover}
+.photo .caption{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.45);color:#fff;padding:.25rem .5rem;border-radius:6px;font-size:.85rem}
+
+/* small screens */
+@media (max-width:900px){
+  .sidebar{position:fixed;left:0;top:0;height:100vh;transform:translateX(-100%);transition:transform .18s}
+  .sidebar.open{transform:translateX(0);z-index:30}
+  .main-wrap{padding:1rem;max-width:100%}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:29}
+  .overlay.show{display:block}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:.5rem;background:var(--card);padding:.6rem 1rem;border-radius:.6rem;box-shadow:0 2px 6px rgba(0,0,0,.06);margin-bottom:1rem}
+}
+@media (min-width:901px){
+  .topbar{display:none}
+}
+
+/* small helpers */
+.pre{white-space:pre-wrap;word-break:break-word;font-size:.86rem;background:#f8f9fb;padding:.6rem;border-radius:.5rem}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+.footer{color:#999;font-size:.85rem;margin-top:1rem}
+</style>
+</head>
+<body>
+
+<!-- LOGIN (full-screen) -->
+<div id="loginScreen">
+  <div class="login-card">
+    <h2>Sign in</h2>
+    <p>Use default: <strong>sabbir123 / sabbir11</strong> or create account below.</p>
+    <div class="login-grid">
+      <input id="loginUser" placeholder="User ID" />
+      <input id="loginPass" type="password" placeholder="Password" />
+      <div class="login-row">
+        <button id="btnDoLogin">Login</button>
+        <button id="btnGuest" class="secondary">Guest</button>
+      </div>
+
+      <div style="height:1px;background:#eee;margin:.3rem 0;"></div>
+      <div style="font-weight:800">Create Account</div>
+      <input id="newUser" placeholder="New User ID" />
+      <input id="newPass" type="password" placeholder="New Password" />
+      <div class="login-row">
+        <button id="btnCreate">Create</button>
+      </div>
+      <div id="loginMsg" class="login-note"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar" style="display:none">
+  <div class="brand">
+    <div style="width:48px;height:48px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M4 4h16v16H4z" fill="#b63232" opacity=".12"/><path d="M7 15c1.5-1 2-3 3-4 1-1 2.5-1.5 3.5-.5 1 1 1 3 2 4s2.5 2 3.5 0" stroke="#b63232" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div>
+      <h1>Meat Inventory</h1>
+      <p class="small-muted">Trace • FIFO/FEFO • Storage</p>
+    </div>
+  </div>
+
+  <!-- NAV (pages) -->
+  <nav class="nav" id="navbar">
+    <a data-tab="home" class="active-link">Home</a>
+    <a data-tab="meatProducts">Meat Products</a>
+    <a data-tab="inventory">Inventory</a>
+    <a data-tab="stockLevels">Stock Levels</a>
+    <a data-tab="storageConditions">Storage Conditions</a>
+    <a data-tab="meatYields">Meat Yields</a>
+    <a data-tab="foodSafety">Food Safety & Recall</a>
+
+    <!-- NEW: FIFO/FEFO buttons as tabs -->
+    <div style="margin-top:.6rem;padding:.5rem;border-radius:8px;background:rgba(255,255,255,.03)">
+      <div style="font-weight:800;margin-bottom:.35rem">Rotation Views</div>
+      <a data-tab="fefoView">FEFO</a>
+      <a data-tab="fifoView">FIFO</a>
+    </div>
+
+    <!-- rotation radios kept -->
+    <div style="margin-top:.6rem;padding:.5rem;border-radius:8px;background:rgba(255,255,255,.03)">
+      <div style="font-weight:800;margin-bottom:.35rem">Rotation Mode</div>
+      <label style="display:block;margin-bottom:.25rem"><input type="radio" name="sideRotation" value="fefo" checked> FEFO (expiry)</label>
+      <label style="display:block"><input type="radio" name="sideRotation" value="fifo"> FIFO (arrival)</label>
+    </div>
+  </nav>
+
+  <!-- REMOVED: Save/Load/Export/Import & Quick tips -->
+</aside>
+
+<div class="overlay" id="overlay"></div>
+
+<!-- MAIN -->
+<div class="main-wrap" id="appMain" style="display:none">
+  <div class="topbar" id="topbar">
+    <div style="display:flex;gap:.6rem;align-items:center;">
+      <button id="menuBtn" class="secondary" style="background:var(--brand-2)">☰</button>
+      <div style="font-weight:800">Meat Inventory</div>
+    </div>
+    <div>
+      <button onclick="openModal('product')">Add product</button>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- HOME -->
+    <section id="home" class="tab-content active">
+      <div class="grid grid-2">
+        <div class="card">
+          <h2 style="margin-top:0">Welcome</h2>
+          <p class="muted">Simplified home view — photos, quick charts and brief info. Use the sidebar to navigate and rotation controls to switch FEFO/FIFO for picking.</p>
+
+          <div style="display:flex;gap:.6rem;margin-top:.8rem;flex-wrap:wrap">
+            <button onclick="openModal('product')">+ Add Product</button>
+            <button class="secondary" onclick="go('stockLevels')">Stock & Rotation</button>
+          </div>
+
+          <div style="margin-top:1rem" class="card">
+            <div style="display:flex;gap:1rem;align-items:center">
+              <div style="flex:1">
+                <div style="font-weight:800" id="homeTotal">Products: 0</div>
+                <div class="muted">Total product batches and stock overview</div>
+              </div>
+              <div style="width:220px">
+                <canvas id="homeBar"></canvas>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="card">
+          <h3 style="margin-top:0">Photos & Quick Pie</h3>
+
+          <div class="photo-grid" style="margin-bottom:.8rem">
+            <a class="photo" href="https://images.unsplash.com/photo-1506086679523-1f3a1edf0a7b" target="_blank"><img src="https://images.unsplash.com/photo-1506086679523-1f3a1edf0a7b?q=60&w=900&auto=format&fit=crop" alt="processing"><div class="caption">Processing</div></a>
+            <a class="photo" href="https://images.unsplash.com/photo-1544025162-d76694265947" target="_blank"><img src="https://images.unsplash.com/photo-1544025162-d76694265947?q=60&w=900&auto=format&fit=crop" alt="cold-storage"><div class="caption">Cold storage</div></a>
+            <a class="photo" href="https://images.unsplash.com/photo-1532634896-26909d0d5f1b" target="_blank"><img src="https://images.unsplash.com/photo-1532634896-26909d0d5f1b?q=60&w=900&auto=format&fit=crop" alt="quality-check"><div class="caption">Quality</div></a>
+          </div>
+
+          <div style="margin-top:.6rem;display:flex;gap:.6rem;align-items:center">
+            <div style="flex:1">
+              <div style="font-weight:800">Stock composition</div>
+              <div class="muted">Percentage of different product types</div>
+            </div>
+            <div style="width:160px">
+              <canvas id="homePie"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- MEAT PRODUCTS -->
+    <section id="meatProducts" class="tab-content">
+      <div class="toolbar">
+        <div class="left"><h2>Meat Products</h2></div>
+        <div class="right">
+          <button onclick="openModal('product')">+ Add Product</button>
+          <button class="secondary" onclick="go('stockLevels')">Go to Stock</button>
+        </div>
+      </div>
+
+      <table id="productTable">
+        <thead>
+          <tr>
+            <th>Product ID</th><th>Name</th><th>Batch</th><th>Animal</th><th>Cut</th><th>Processing</th><th>Shelf (days)</th><th>Packaging</th><th>Supplier</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- INVENTORY -->
+    <section id="inventory" class="tab-content">
+      <div class="toolbar">
+        <div class="left"><h2>Inventory</h2></div>
+        <div class="right"><button onclick="openModal('inventory')">+ Add Inventory</button></div>
+      </div>
+
+      <table id="inventoryTable">
+        <thead>
+          <tr><th>Product</th><th>Name</th><th>Batch</th><th>Status</th><th>Meat Cuts</th><th>Qty (kg)</th><th>Process Date</th><th>Unit</th><th>Action</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- STOCK LEVELS -->
+    <section id="stockLevels" class="tab-content">
+      <div class="toolbar">
+        <div class="left"><h2>Stock Levels</h2></div>
+        <div class="right">
+          <button onclick="openModal('stock')">+ Add / Edit Stock</button>
+          <label class="muted">Sort:
+            <select id="stockSort" onchange="Render.stock()"><option value="batch">Batch</option><option value="expiry">Expiry (FEFO)</option><option value="qty">Quantity</option></select>
+          </label>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1fr 360px;gap:1rem">
+        <div>
+          <table id="stockTable">
+            <thead>
+              <tr><th>Product</th><th>Name</th><th>Batch</th><th>Facility</th><th>Location</th><th>Qty (kg)</th><th>Status</th><th>Expiry</th><th>Rotation</th><th>Action</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <aside>
+          <div class="card">
+            <h3 style="margin-top:0">Rotation Control</h3>
+            <p class="muted">Sidebar radio controls set the global mode. Use the buttons below to suggest picks.</p>
+            <div style="margin-top:.6rem;display:flex;gap:.5rem">
+              <button onclick="Rotation.suggestPick()" class="btn">Suggest next pick</button>
+              <button onclick="Rotation.bulkMarkPicked()" class="secondary">Mark suggested picked</button>
+            </div>
+            <div id="rotationSuggestion" style="margin-top:.8rem" class="muted">No suggestion yet.</div>
+          </div>
+
+          <div class="card" style="margin-top:.8rem">
+            <h3 style="margin-top:0">Stock Health</h3>
+            <canvas id="stockHealthChart"></canvas>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- STORAGE CONDITIONS -->
+    <section id="storageConditions" class="tab-content">
+      <div class="toolbar"><div class="left"><h2>Storage Conditions</h2></div><div class="right"><button onclick="openModal('storage')">+ Add Record</button></div></div>
+
+      <table id="storageTable">
+        <thead><tr><th>Warehouse</th><th>Product</th><th>Batch</th><th>Temp (°C)</th><th>Humidity (%)</th><th>Timestamp</th><th>Action</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- MEAT YIELDS -->
+    <section id="meatYields" class="tab-content">
+      <div class="toolbar"><div class="left"><h2>Meat Yields</h2></div><div class="right"><button onclick="openModal('yield')">+ Add Yield</button></div></div>
+
+      <table id="yieldTable">
+        <thead><tr><th>Batch</th><th>Activity</th><th>Total (kg)</th><th>Meat</th><th>Trim</th><th>Bones</th><th>Offal</th><th>Action</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div style="margin-top:1rem" class="grid grid-2">
+        <div class="card"><h4 style="margin-top:0">Yield Composition</h4><canvas id="yieldPie"></canvas></div>
+        <div class="card"><h4 style="margin-top:0">Waste Over Time</h4><canvas id="wasteLine"></canvas></div>
+      </div>
+    </section>
+
+    <!-- FOOD SAFETY & RECALL -->
+    <section id="foodSafety" class="tab-content">
+      <div class="toolbar"><div class="left"><h2>Food Safety & Recall</h2></div><div class="right"><button class="warn" onclick="openModal('recall')">+ Report Recall</button></div></div>
+
+      <table id="recallTable">
+        <thead><tr><th>Batch</th><th>Issue</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="card" style="margin-top:1rem">
+        <h3 style="margin-top:0">Trace Batch</h3>
+        <div class="toolbar">
+          <div class="left">
+            <input id="traceInput" placeholder="Enter Batch ID (e.g., B001)" />
+            <button onclick="UI.traceBatch()">Trace</button>
+          </div>
+          <div class="right"><span class="muted">Find product → inventory → stock → storage entries for any batch</span></div>
+        </div>
+        <div id="traceResult" class="grid"></div>
+      </div>
+    </section>
+
+    <!-- NEW: FEFO VIEW -->
+    <section id="fefoView" class="tab-content">
+      <div class="toolbar">
+        <div class="left"><h2>FEFO Queue (soonest expiry first)</h2></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h4 style="margin-top:0">FEFO Table</h4>
+          <table>
+            <thead>
+              <tr><th>Batch</th><th>Name</th><th>Expiry</th><th>Qty (kg)</th></tr>
+            </thead>
+            <tbody id="fefoTableBody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h4 style="margin-top:0">FEFO List</h4>
+          <ul id="fefoList" style="margin:0;padding-left:1.1rem"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW: FIFO VIEW -->
+    <section id="fifoView" class="tab-content">
+      <div class="toolbar">
+        <div class="left"><h2>FIFO Queue (oldest arrival first)</h2></div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h4 style="margin-top:0">FIFO Table</h4>
+          <table>
+            <thead>
+              <tr><th>Batch</th><th>Name</th><th>Arrived</th><th>Qty (kg)</th></tr>
+            </thead>
+            <tbody id="fifoTableBody"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h4 style="margin-top:0">FIFO List</h4>
+          <ul id="fifoList" style="margin:0;padding-left:1.1rem"></ul>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- end container -->
+</div><!-- end main-wrap -->
+
+<!-- Modal -->
+<dialog id="modal">
+  <div class="modal-head">
+    <strong id="modalTitle">Add</strong>
+    <button class="secondary" onclick="closeModal()">✕</button>
+  </div>
+  <form id="modalForm" class="modal-body" method="dialog" onsubmit="return false">
+    <div id="modalFields" class="form-grid"></div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="secondary" type="button" onclick="closeModal()">Cancel</button>
+      <button type="button" onclick="submitModal()">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/* ============================
+   Central state and utilities
+   ============================ */
+const Store = {
+  products: [],
+  inventory: [],
+  stock: [],
+  storage: [],
+  yields: [],
+  recalls: []
+};
+
+const H = {
+  today: ()=> new Date().toISOString().slice(0,10),
+  parseNum: (v,d=0)=>{ const n = Number(v); return Number.isFinite(n)?n:d; },
+  stockStatus: (kg)=> kg<=0?'Stock Out': kg<50?'Low': kg>1000?'Over Stocking':'High',
+  needsRestock: (kg)=> kg < 80,
+  fefoSort: (arr)=> [...arr].sort((a,b)=> new Date(a.expiry) - new Date(b.expiry)),
+  fifoSort: (arr)=> [...arr].sort((a,b)=> new Date(a.arrivalTs || a._added || 0) - new Date(b.arrivalTs || b._added || 0))
+};
+
+/* ==============
+   Persistence & CSV (kept for future; buttons removed from UI)
+   ============== */
+const Persistence = {
+  saveToLocal(){
+    try{
+      localStorage.setItem('meatStore', JSON.stringify(Store));
+      alert('Saved to localStorage');
+    } catch(e){ alert('Save failed: '+ e.message) }
+  },
+  loadFromLocal(){
+    const s = localStorage.getItem('meatStore');
+    if(!s) return alert('No saved data');
+    try{
+      const obj = JSON.parse(s);
+      Object.keys(Store).forEach(k=> Store[k] = obj[k] || []);
+      Render.all();
+      alert('Loaded from localStorage');
+    }catch(e){ alert('Load failed: '+e.message) }
+  },
+  exportCSV(){
+    const rows = Store.stock.map(s=>({
+      productId: s.productId, name: s.name, batchId: s.batchId, facility: s.facilityName, location: s.location, stockKg: s.stockKg, expiry: s.expiry
+    }));
+    if(rows.length===0) return alert('No stock to export');
+    const keys = Object.keys(rows[0]);
+    const csv = [keys.join(',')].concat(rows.map(r=> keys.map(k=> JSON.stringify(r[k]||'')).join(',') )).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'stock_export.csv'; a.click();
+    URL.revokeObjectURL(url);
+  },
+  importCSV(file){
+    if(!file) return alert('No file selected');
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const txt = e.target.result;
+      const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+      if(lines.length < 2) return alert('CSV looks empty');
+      const headers = lines[0].split(',').map(h=>h.replace(/^"|"$/g,'').trim());
+      for(let i=1;i<lines.length;i++){
+        const cols = lines[i].split(',').map(c=>c.replace(/^"|"$/g,''));
+        const obj = {};
+        headers.forEach((h, idx)=> obj[h]=cols[idx] || '');
+        if(obj.productId && obj.batchId){
+          const rec = {
+            productId: obj.productId,
+            batchId: obj.batchId,
+            name: obj.name || 'Imported',
+            facilityName: obj.facility || 'Imported',
+            facilityId: obj.facilityId || 'IMP-1',
+            location: obj.location || 'Imported',
+            stockKg: H.parseNum(obj.stockKg,0),
+            expiry: obj.expiry || H.today(),
+            status: H.stockStatus(H.parseNum(obj.stockKg,0)),
+            restockNeeded: H.needsRestock(H.parseNum(obj.stockKg,0)),
+            arrivalTs: new Date().toISOString()
+          };
+          Store.stock.push(rec);
+        }
+      }
+      Render.stock();
+      alert('Imported CSV (best-effort). Please review imported entries.');
+    };
+    reader.readAsText(file);
+  }
+};
+
+/* ======================
+   Modal + form utilities
+   ====================== */
+let modalCtx = {type:null, payload:null};
+const modal = document.getElementById('modal');
+const modalTitle = document.getElementById('modalTitle');
+const modalFields = document.getElementById('modalFields');
+
+function field(name,label,type='text',opts={}){
+  const id = `f_${name}`;
+  const w = opts.full? 'class="full"':'';
+  let extra = '';
+  if(type==='select'){
+    const options = opts.options || [];
+    extra = `<select id="${id}">${options.map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}</select>`;
+  } else if(type==='textarea'){
+    extra = `<textarea id="${id}" rows="${opts.rows||3}" placeholder="${escapeHtml(opts.placeholder||'')}"></textarea>`;
+  } else {
+    extra = `<input id="${id}" type="${type}" ${opts.step?`step="${opts.step}"`:''} ${opts.min?`min="${opts.min}"`:''} placeholder="${escapeHtml(opts.placeholder||'')}">`;
+  }
+  return `<div ${w} style="display:block;margin-bottom:.35rem"><label style="font-weight:700;font-size:.9rem">${escapeHtml(label)}</label><div style="margin-top:.25rem">${extra}</div></div>`;
+}
+
+function openModal(type, payload=null){
+  modalCtx = {type, payload};
+  modalFields.innerHTML = '';
+  modalTitle.textContent = {
+    product:'Add / Edit Product',
+    inventory:'Add / Edit Inventory',
+    stock:'Add / Edit Stock',
+    storage:'Add Storage Record',
+    yield:'Add Yield',
+    recall:'Report Recall'
+  }[type] || 'Add';
+
+  if(type === 'product'){
+    modalFields.innerHTML = [
+      field('productId','Product ID'),
+      field('name','Product Name'),
+      field('batchId','Batch ID'),
+      field('animal','Animal Type'),
+      field('cut','Cut Type'),
+      field('processingDate','Processing Date','date'),
+      field('storageReq','Storage Requirements','text',{placeholder:'Freezer -18°C'}),
+      field('shelfLifeDays','Shelf Life (days)','number',{step:1,min:1}),
+      field('packaging','Packaging Details','text'),
+      field('supplier','Supplier','text')
+    ].join('');
+  } else if(type === 'inventory'){
+    const prodOptions = Store.products.map(p=>`${p.productId}|${p.batchId}|${p.name}`);
+    modalFields.innerHTML = [
+      field('ref','Select Product|Batch|Name','select',{options: prodOptions.length?prodOptions:['NO_PRODUCTS']}),
+      field('livestockStatus','Livestock Status','select',{options:['Incoming','Available']}),
+      field('meatCuts','Meat Cuts','text'),
+      field('quantityKg','Quantity (kg)','number',{step:'0.01',min:'0'}),
+      field('processingUnit','Processing Unit','text',{placeholder:'Unit A'})
+    ].join('');
+  } else if(type === 'stock'){
+    const prodOptions = Store.products.map(p=>`${p.productId}|${p.batchId}|${p.name}`);
+    modalFields.innerHTML = [
+      field('ref','Select Product|Batch|Name','select',{options: prodOptions.length?prodOptions:['NO_PRODUCTS']}),
+      field('facilityName','Facility Name','text',{placeholder:'Freezer A'}),
+      field('facilityId','Facility ID','text',{placeholder:'FZ-A'}),
+      field('location','Location','text',{placeholder:'Warehouse 1'}),
+      field('stockKg','Stock Level (kg)','number',{step:'0.01',min:'0'})
+    ].join('');
+  } else if(type === 'storage'){
+    const prodOptions = Store.products.map(p=>`${p.productId}|${p.batchId}|${p.name}`);
+    modalFields.innerHTML = [
+      field('warehouseId','Warehouse ID','text'),
+      field('ref','Select Product|Batch|Name','select',{options: prodOptions.length?prodOptions:['NO_PRODUCTS']}),
+      field('temperatureC','Temperature (°C)','number',{step:'0.1'}),
+      field('humidityPct','Humidity (%)','number',{step:'0.1'})
+    ].join('');
+  } else if(type === 'yield'){
+    const batchOptions = [...new Set(Store.products.map(p=>p.batchId))];
+    modalFields.innerHTML = [
+      field('batchId','Batch ID','select',{options: batchOptions.length?batchOptions:['NO_BATCH']}),
+      field('activity','Processing Activity','text',{placeholder:'Deboning'}),
+      field('totalKg','Total (kg)','number',{step:'0.01',min:'0'}),
+      field('meatKg','Meat (kg)','number',{step:'0.01',min:'0'}),
+      field('trimKg','Trimmings (kg)','number',{step:'0.01',min:'0'}),
+      field('bonesKg','Bones (kg)','number',{step:'0.01',min:'0'}),
+      field('offalKg','Offal (kg)','number',{step:'0.01',min:'0'})
+    ].join('');
+  } else if(type === 'recall'){
+    const batchOptions = [...new Set(Store.products.map(p=>p.batchId))];
+    modalFields.innerHTML = [
+      field('batchId','Batch ID','select',{options: batchOptions.length?batchOptions:['NO_BATCH']}),
+      field('issue','Issue','text',{placeholder:'Temperature breach'}),
+      field('date','Date','date'),
+      field('status','Status','select',{options:['Recalled','Investigating','Closed']})
+    ].join('');
+  }
+
+  // prefill payload if provided
+  if(payload && typeof payload === 'object'){
+    setTimeout(()=>{
+      Object.keys(payload).forEach(k=>{
+        const el = document.getElementById('f_'+k);
+        if(el) el.value = payload[k];
+      });
+    }, 10);
+  }
+
+  modal.showModal();
+}
+
+function closeModal(){ try{ modal.close(); } catch(e){} }
+
+function v(id){ return document.getElementById('f_'+id)?.value?.trim(); }
+
+/* =========
+   Submit modal
+   ========= */
+function submitModal(){
+  const t = modalCtx.type;
+  if(t==='product'){
+    const rec = {
+      productId: v('productId'), name: v('name'), batchId: v('batchId'),
+      animal: v('animal'), cut: v('cut'),
+      processingDate: v('processingDate')||H.today(),
+      storageReq: v('storageReq'), shelfLifeDays: H.parseNum(v('shelfLifeDays'),30),
+      packaging: v('packaging'), supplier: v('supplier')
+    };
+    if(!rec.productId || !rec.batchId || !rec.name) return alert('Product ID, Batch ID and Name required');
+    const idx = Store.products.findIndex(p=>p.productId===rec.productId && p.batchId===rec.batchId);
+    if(idx>=0) Store.products[idx] = rec; else Store.products.push(rec);
+
+    // sync inventory
+    const invIdx = Store.inventory.findIndex(i=>i.productId===rec.productId && i.batchId===rec.batchId);
+    if(invIdx<0){
+      Store.inventory.push({productId:rec.productId,batchId:rec.batchId,name:rec.name,livestockStatus:'Incoming',meatCuts:rec.cut,quantityKg:0,processingDate:rec.processingDate,processingUnit:'Unit A'});
+    } else {
+      Store.inventory[invIdx].name = rec.name;
+      Store.inventory[invIdx].meatCuts ||= rec.cut;
+    }
+
+    // sync stock base
+    const expiry = (()=>{ const d = new Date(rec.processingDate); d.setDate(d.getDate()+Number(rec.shelfLifeDays || 30)); return d.toISOString().slice(0,10); })();
+    const stIdx = Store.stock.findIndex(s=>s.productId===rec.productId && s.batchId===rec.batchId);
+    const base = {
+      productId:rec.productId, batchId:rec.batchId, name:rec.name,
+      facilityName: Store.stock[stIdx]?.facilityName || 'Freezer A',
+      facilityId: Store.stock[stIdx]?.facilityId || 'FZ-A',
+      location: Store.stock[stIdx]?.location || 'Warehouse 1',
+      stockKg: Store.stock[stIdx]?.stockKg ?? 0,
+      expiry, status:'High', restockNeeded:false,
+      arrivalTs: Store.stock[stIdx]?.arrivalTs || new Date().toISOString()
+    };
+    if(stIdx>=0) Store.stock[stIdx]=base; else Store.stock.push(base);
+
+    Render.all();
+  }
+
+  if(t==='inventory'){
+    const ref = v('ref'); if(!ref || ref==='NO_PRODUCTS') return alert('Add product first');
+    const [productId,batchId,name] = ref.split('|');
+    const rec = {
+      productId, batchId, name,
+      livestockStatus: v('livestockStatus')||'Incoming',
+      meatCuts: v('meatCuts')||'',
+      quantityKg: H.parseNum(v('quantityKg'),0),
+      processingDate: (Store.products.find(p=>p.productId===productId && p.batchId===batchId)||{}).processingDate,
+      processingUnit: v('processingUnit')||'Unit A'
+    };
+    const idx = Store.inventory.findIndex(i=>i.productId===productId && i.batchId===batchId);
+    if(idx>=0) Store.inventory[idx]=rec; else Store.inventory.push(rec);
+
+    // reflect to stock
+    const st = Store.stock.find(s=>s.productId===productId && s.batchId===batchId);
+    if(st){ st.stockKg = rec.quantityKg; st.status = H.stockStatus(rec.quantityKg); st.restockNeeded = H.needsRestock(rec.quantityKg); }
+
+    Render.inventory(); Render.stock();
+  }
+
+  if(t==='stock'){
+    const ref = v('ref'); if(!ref || ref==='NO_PRODUCTS') return alert('Add product first');
+    const [productId,batchId,name] = ref.split('|');
+    const prod = Store.products.find(p=>p.productId===productId && p.batchId===batchId) || {};
+    const expiry = (()=>{ const d=new Date(prod.processingDate || H.today()); d.setDate(d.getDate()+Number(prod.shelfLifeDays||30)); return d.toISOString().slice(0,10); })();
+    const rec = {
+      productId,batchId,name,
+      facilityName: v('facilityName')||'Freezer A',
+      facilityId: v('facilityId')||'FZ-A',
+      location: v('location')||'Warehouse 1',
+      stockKg: H.parseNum(v('stockKg'),0),
+      expiry, status:'High', restockNeeded:false,
+      arrivalTs: new Date().toISOString()
+    };
+    rec.status = H.stockStatus(rec.stockKg);
+    rec.restockNeeded = H.needsRestock(rec.stockKg);
+    const idx = Store.stock.findIndex(s=>s.productId===productId && s.batchId===batchId);
+    if(idx>=0){
+      rec.arrivalTs = Store.stock[idx].arrivalTs || rec.arrivalTs;
+      Store.stock[idx] = rec;
+    } else {
+      Store.stock.push(rec);
+    }
+
+    // mirror to inventory
+    const ii = Store.inventory.findIndex(i=>i.productId===productId && i.batchId===batchId);
+    if(ii>=0) Store.inventory[ii].quantityKg = rec.stockKg;
+    Render.stock(); Render.inventory();
+  }
+
+  if(t==='storage'){
+    const ref = v('ref'); if(!ref || ref==='NO_PRODUCTS') return alert('Add product first');
+    const [productId,batchId] = ref.split('|');
+    const rec = { warehouseId: v('warehouseId')||'WH-01', productId, batchId, temperatureC: H.parseNum(v('temperatureC'),-18), humidityPct: H.parseNum(v('humidityPct'),65), ts: new Date().toLocaleString() };
+    Store.storage.push(rec);
+    Render.storage();
+  }
+
+  if(t==='yield'){
+    const rec = { batchId: v('batchId'), activity: v('activity')||'Process', totalKg: H.parseNum(v('totalKg'),0), meatKg: H.parseNum(v('meatKg'),0), trimKg: H.parseNum(v('trimKg'),0), bonesKg: H.parseNum(v('bonesKg'),0), offalKg: H.parseNum(v('offalKg'),0), ts: new Date().toISOString() };
+    if(!rec.batchId || rec.batchId==='NO_BATCH') return alert('Select batch');
+    const idx = Store.yields.findIndex(y=>y.batchId===rec.batchId);
+    if(idx>=0) Store.yields[idx] = rec; else Store.yields.push(rec);
+    Render.yields();
+  }
+
+  if(t==='recall'){
+    const rec = { batchId: v('batchId'), issue: v('issue')||'Issue', date: v('date')||H.today(), status: v('status')||'Recalled' };
+    if(!rec.batchId || rec.batchId==='NO_BATCH') return alert('Select batch');
+    const idx = Store.recalls.findIndex(r=>r.batchId===rec.batchId);
+    if(idx>=0) Store.recalls[idx] = rec; else Store.recalls.push(rec);
+    const st = Store.stock.find(s=>s.batchId===rec.batchId);
+    if(st){ st.status = 'Recalled'; st.restockNeeded = true; }
+    Render.foodSafety(); Render.stock();
+  }
+
+  closeModal();
+}
+
+/* =================
+   Rendering engine
+   ================= */
+const Render = {
+  all(){ this.products(); this.inventory(); this.stock(); this.storage(); this.yields(); this.foodSafety(); this.summary(); this.drawHomeCharts(); },
+  products(){
+    const tb = document.querySelector('#productTable tbody'); if(!tb) return; tb.innerHTML = '';
+    Store.products.forEach((p, i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(p.productId)}</td><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.batchId)}</td><td>${escapeHtml(p.animal)}</td><td>${escapeHtml(p.cut)}</td><td>${escapeHtml(p.processingDate)}</td><td>${escapeHtml(p.shelfLifeDays)}</td><td>${escapeHtml(p.packaging)}</td><td>${escapeHtml(p.supplier)}</td><td>
+        <button class="edit-btn" data-type="product" data-index="${i}">Edit</button>
+        <button class="warn delete-btn" data-type="product" data-index="${i}">Delete</button>
+      </td>`;
+      tb.appendChild(tr);
+    });
+  },
+  inventory(){
+    const tb = document.querySelector('#inventoryTable tbody'); if(!tb) return; tb.innerHTML = '';
+    Store.inventory.forEach((inv,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(inv.productId)}</td><td>${escapeHtml(inv.name)}</td><td>${escapeHtml(inv.batchId)}</td><td>${escapeHtml(inv.livestockStatus)}</td><td>${escapeHtml(inv.meatCuts)}</td><td>${escapeHtml(inv.quantityKg)}</td><td>${escapeHtml(inv.processingDate)}</td><td>${escapeHtml(inv.processingUnit)}</td>
+      <td><button class="edit-btn" data-type="inventory" data-index="${i}">Edit</button></td>`;
+      tb.appendChild(tr);
+    });
+  },
+  stock(){
+    const sort = document.getElementById('stockSort')?.value || 'batch';
+    let rows = [...Store.stock];
+    if(sort === 'expiry') rows.sort((a,b)=> new Date(a.expiry)-new Date(b.expiry));
+    if(sort === 'qty') rows.sort((a,b)=> b.stockKg - a.stockKg);
+
+    const tbody = document.querySelector('#stockTable tbody'); if(tbody) tbody.innerHTML = '';
+    rows.forEach((s, idx) => {
+      if(tbody){
+        const tr = document.createElement('tr');
+        const fefoOrder = Store.stock.filter(x=>x.productId===s.productId).sort((a,b)=> new Date(a.expiry)-new Date(b.expiry)).findIndex(x=>x.batchId===s.batchId)+1;
+        tr.dataset.batch = s.batchId;
+        tr.innerHTML = `<td>${escapeHtml(s.productId)}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.batchId)}</td><td>${escapeHtml(s.facilityName)}</td><td>${escapeHtml(s.location)}</td><td>${escapeHtml(s.stockKg)}</td><td>${pillHtml(s.status)}</td><td>${escapeHtml(s.expiry)}</td><td>Order #${fefoOrder}</td>
+          <td><button class="edit-btn" data-type="stock" data-batch="${escapeHtml(s.batchId)}">Edit</button></td>`;
+        tbody.appendChild(tr);
+      }
+    });
+
+    // FEFO/FIFO lists + NEW table bodies
+    const fefoList = document.getElementById('fefoList'); if(fefoList) fefoList.innerHTML = '';
+    const fefoBody = document.getElementById('fefoTableBody'); if(fefoBody) fefoBody.innerHTML = '';
+    H.fefoSort(Store.stock).forEach(s=>{
+      if(fefoList){ const li = document.createElement('li'); li.textContent = `${s.batchId} → ${s.name} (exp ${s.expiry}) — ${s.stockKg} kg`; fefoList.appendChild(li); }
+      if(fefoBody){ const tr = document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(s.batchId)}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.expiry)}</td><td>${escapeHtml(s.stockKg)}</td>`; fefoBody.appendChild(tr); }
+    });
+
+    const fifoList = document.getElementById('fifoList'); if(fifoList) fifoList.innerHTML = '';
+    const fifoBody = document.getElementById('fifoTableBody'); if(fifoBody) fifoBody.innerHTML = '';
+    H.fifoSort(Store.stock).forEach(s=>{
+      if(fifoList){ const li = document.createElement('li'); li.textContent = `${s.batchId} → ${s.name} (arrived ${new Date(s.arrivalTs||s._added||Date.now()).toLocaleString()}) — ${s.stockKg} kg`; fifoList.appendChild(li); }
+      if(fifoBody){ const tr = document.createElement('tr'); tr.innerHTML = `<td>${escapeHtml(s.batchId)}</td><td>${escapeHtml(s.name)}</td><td>${escapeHtml(new Date(s.arrivalTs||s._added||Date.now()).toLocaleString())}</td><td>${escapeHtml(s.stockKg)}</td>`; fifoBody.appendChild(tr); }
+    });
+
+    Charts.stockHealth();
+  },
+  storage(){
+    const tb = document.querySelector('#storageTable tbody'); if(!tb) return; tb.innerHTML = '';
+    Store.storage.forEach((s,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(s.warehouseId)}</td><td>${escapeHtml(s.productId)}</td><td>${escapeHtml(s.batchId)}</td><td>${escapeHtml(s.temperatureC)}</td><td>${escapeHtml(s.humidityPct)}</td><td>${escapeHtml(s.ts)}</td><td><button class="edit-btn" data-type="storage" data-index="${i}">Edit</button></td>`;
+      tb.appendChild(tr);
+    });
+  },
+  yields(){
+    const tb = document.querySelector('#yieldTable tbody'); if(!tb) return; tb.innerHTML = '';
+    Store.yields.forEach((y,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(y.batchId)}</td><td>${escapeHtml(y.activity)}</td><td>${escapeHtml(y.totalKg)}</td><td>${escapeHtml(y.meatKg)}</td><td>${escapeHtml(y.trimKg)}</td><td>${escapeHtml(y.bonesKg)}</td><td>${escapeHtml(y.offalKg)}</td><td><button class="edit-btn" data-type="yield" data-index="${i}">Edit</button></td>`;
+      tb.appendChild(tr);
+    });
+    Charts.yields();
+  },
+  foodSafety(){
+    const tb = document.querySelector('#recallTable tbody'); if(!tb) return; tb.innerHTML = '';
+    Store.recalls.forEach((r,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${escapeHtml(r.batchId)}</td><td>${escapeHtml(r.issue)}</td><td>${escapeHtml(r.date)}</td><td>${pillHtml(r.status)}</td><td><button class="edit-btn" data-type="recall" data-index="${i}">Edit</button></td>`;
+      tb.appendChild(tr);
+    });
+  },
+  summary(){
+    const el = document.getElementById('homeTotal'); if(el) el.textContent = `Products: ${Store.products.length}`;
+    // highlight suggested pick in stock table (if any)
+    const suggested = Rotation.nextBatch();
+    document.querySelectorAll('#stockTable tbody tr').forEach(tr=> tr.style.background = '');
+    if(suggested){
+      const row = document.querySelector(`#stockTable tbody tr[data-batch="${CSS.escape(suggested.batchId)}"]`);
+      if(row) row.style.background = 'linear-gradient(90deg, rgba(255,249,230,.9), rgba(255,255,255,.6))';
+    }
+  },
+  drawHomeCharts(){
+    // bar
+    const ctxBar = document.getElementById('homeBar');
+    if(ctxBar){
+      const counts = {};
+      Store.products.forEach(p=> counts[p.animal] = (counts[p.animal]||0) + 1);
+      const labels = Object.keys(counts);
+      const data = Object.values(counts);
+      if(CHARTS.homeBar){ CHARTS.homeBar.destroy(); CHARTS.homeBar = null; }
+      CHARTS.homeBar = new Chart(ctxBar, { type:'bar', data:{ labels, datasets:[{ label:'Batches', data }] }, options:{plugins:{legend:{display:false}}} });
+    }
+    // pie
+    const ctxPie = document.getElementById('homePie');
+    if(ctxPie){
+      const totals = {};
+      Store.stock.forEach(s => totals[s.productId] = (totals[s.productId]||0) + Number(s.stockKg||0));
+      const labels = Object.keys(totals).map(k=> {
+        const p = Store.products.find(x=>x.productId===k);
+        return p? p.name + ` (${k})` : k;
+      });
+      const data = Object.values(totals);
+      if(CHARTS.homePie){ CHARTS.homePie.destroy(); CHARTS.homePie = null; }
+      CHARTS.homePie = new Chart(ctxPie, { type:'pie', data:{ labels, datasets:[{ data }] }, options:{plugins:{legend:{position:'right'}}} });
+    }
+  }
+};
+
+/* =========
+   Helper HTML
+   ========= */
+function pillHtml(status){
+  const map = {'Low':'low','High':'high','Stock Out':'out','Over Stocking':'over','Recalled':'recall'};
+  const cls = map[status] || 'high';
+  return `<span class="pill ${cls}">${escapeHtml(status)}</span>`;
+}
+
+/* =================
+   Charts (Chart.js)
+   ================= */
+let CHARTS = {homeBar:null, homePie:null, stockHealth:null, yieldPie:null, wasteLine:null};
+
+const Charts = {
+  stockHealth(){
+    const ctx = document.getElementById('stockHealthChart');
+    if(!ctx) return;
+    if(CHARTS.stockHealth) CHARTS.stockHealth.destroy();
+    const counts = Store.stock.reduce((acc,s)=>{ acc[s.status] = (acc[s.status]||0) + 1; return acc; }, {});
+    CHARTS.stockHealth = new Chart(ctx, { type:'bar', data:{ labels:Object.keys(counts), datasets:[{ label:'Batches', data:Object.values(counts) }] }, options:{plugins:{legend:{display:false}}} });
+  },
+  yields(){
+    const y = Store.yields[Store.yields.length-1];
+    const pieCtx = document.getElementById('yieldPie');
+    if(pieCtx){ if(CHARTS.yieldPie) CHARTS.yieldPie.destroy(); if(y){ CHARTS.yieldPie = new Chart(pieCtx,{ type:'pie', data:{ labels:['Meat','Trimmings','Bones','Offal'], datasets:[{ data:[y.meatKg, y.trimKg, y.bonesKg, y.offalKg] }] } }); } }
+    const lineCtx = document.getElementById('wasteLine');
+    if(lineCtx){ if(CHARTS.wasteLine) CHARTS.wasteLine.destroy(); const labels = Store.yields.map(x=>x.batchId); const waste = Store.yields.map(x=>x.trimKg + x.bonesKg + x.offalKg); CHARTS.wasteLine = new Chart(lineCtx,{ type:'line', data:{ labels, datasets:[{ label:'Waste (kg)', data:waste }] } }); }
+  }
+};
+
+/* ===================
+   Rotation (FEFO/FIFO)
+   =================== */
+const Rotation = {
+  mode: 'fefo',
+  setMode(m){
+    this.mode = m;
+    const rs = document.getElementById('rotationSuggestion');
+    if(rs) rs.textContent = `Mode: ${m.toUpperCase()}`;
+    document.querySelectorAll('input[name="sideRotation"]').forEach(r=> r.checked = r.value === m);
+    Render.summary();
+  },
+  nextBatch(productId){
+    let candidates = Store.stock.filter(s=> Number(s.stockKg) > 0 && s.status !== 'Recalled');
+    if(productId) candidates = candidates.filter(s=> s.productId === productId);
+    if(candidates.length === 0) return null;
+    if(this.mode === 'fefo') candidates.sort((a,b)=> new Date(a.expiry) - new Date(b.expiry));
+    else candidates.sort((a,b)=> new Date(a.arrivalTs || a._added || 0) - new Date(b.arrivalTs || b._added || 0));
+    return candidates[0];
+  },
+  suggestPick(){
+    const s = this.nextBatch();
+    if(!s) return (document.getElementById('rotationSuggestion').textContent = 'No pickable batch found.');
+    document.getElementById('rotationSuggestion').innerHTML = `<strong>Suggest:</strong> Pick ${escapeHtml(s.batchId)} — ${escapeHtml(s.name)} (${s.stockKg} kg) [${this.mode.toUpperCase()}]`;
+    Render.summary();
+  },
+  bulkMarkPicked(){
+    const s = this.nextBatch();
+    if(!s) return alert('No suggested batch');
+    const qty = prompt(`Enter kg to pick from ${s.batchId} (available ${s.stockKg}):`, `${Math.min(10, s.stockKg)}`);
+    if(qty === null) return;
+    const q = H.parseNum(qty,0);
+    if(q <= 0) return alert('Invalid qty');
+    const st = Store.stock.find(x=>x.batchId === s.batchId && x.productId === s.productId);
+    if(!st) return alert('Batch not found');
+    st.stockKg = Math.max(0, st.stockKg - q);
+    st.status = H.stockStatus(st.stockKg);
+    st.restockNeeded = H.needsRestock(st.stockKg);
+    // sync inventory
+    const inv = Store.inventory.find(i=>i.batchId === st.batchId && i.productId === st.productId);
+    if(inv) inv.quantityKg = st.stockKg;
+    Render.stock();
+    alert(`Picked ${q} kg from ${st.batchId}`);
+  }
+};
+
+/* ===================
+   Edit/Delete handlers
+   =================== */
+document.body.addEventListener('click', (ev)=>{
+  const el = ev.target;
+  if(el.matches('.edit-btn')){
+    const type = el.dataset.type;
+    if(type === 'product'){
+      const idx = Number(el.dataset.index);
+      const payload = Store.products[idx];
+      openModal('product', payload);
+    } else if(type === 'inventory'){
+      const idx = Number(el.dataset.index);
+      const payload = Store.inventory[idx];
+      openModal('inventory', payload);
+    } else if(type === 'stock'){
+      const batch = el.dataset.batch;
+      const payload = Store.stock.find(s=>s.batchId === batch);
+      openModal('stock', payload);
+    } else if(type === 'storage'){
+      const idx = Number(el.dataset.index);
+      const payload = Store.storage[idx];
+      openModal('storage', payload);
+    } else if(type === 'yield'){
+      const idx = Number(el.dataset.index);
+      const payload = Store.yields[idx];
+      openModal('yield', payload);
+    } else if(type === 'recall'){
+      const idx = Number(el.dataset.index);
+      const payload = Store.recalls[idx];
+      openModal('recall', payload);
+    }
+  }
+
+  if(el.matches('.delete-btn')){
+    const type = el.dataset.type;
+    if(type === 'product'){
+      const idx = Number(el.dataset.index);
+      const rec = Store.products[idx];
+      if(!confirm(`Delete product ${rec.productId} / ${rec.batchId} and related records?`)) return;
+      Store.products = Store.products.filter((p,i)=> i !== idx);
+      Store.inventory = Store.inventory.filter(i=> !(i.productId === rec.productId && i.batchId === rec.batchId));
+      Store.stock = Store.stock.filter(s=> !(s.productId === rec.productId && s.batchId === rec.batchId));
+      Store.storage = Store.storage.filter(st=> !(st.productId === rec.productId && st.batchId === rec.batchId));
+      Store.yields = Store.yields.filter(y=> y.batchId !== rec.batchId);
+      Render.all();
+    }
+  }
+});
+
+/* ======================
+   Trace & UI helpers
+   ====================== */
+const UI = {
+  traceBatch(){
+    const bid = document.getElementById('traceInput').value.trim();
+    if(!bid) return alert('Enter a batch ID');
+    const prod = Store.products.filter(p=>p.batchId === bid);
+    const inv = Store.inventory.filter(i=>i.batchId === bid);
+    const stk = Store.stock.filter(s=>s.batchId === bid);
+    const sto = Store.storage.filter(s=>s.batchId === bid);
+    const rec = Store.recalls.filter(r=>r.batchId === bid);
+    const out = [];
+    if(prod.length) out.push(`<div class="card"><h4>Product</h4><pre>${escapeHtml(JSON.stringify(prod,null,2))}</pre></div>`);
+    if(inv.length) out.push(`<div class="card"><h4>Inventory</h4><pre>${escapeHtml(JSON.stringify(inv,null,2))}</pre></div>`);
+    if(stk.length) out.push(`<div class="card"><h4>Stock</h4><pre>${escapeHtml(JSON.stringify(stk,null,2))}</pre></div>`);
+    if(sto.length) out.push(`<div class="card"><h4>Storage</h4><pre>${escapeHtml(JSON.stringify(sto,null,2))}</pre></div>`);
+    if(rec.length) out.push(`<div class="card"><h4>Recall</h4><pre>${escapeHtml(JSON.stringify(rec,null,2))}</pre></div>`);
+    if(!out.length) out.push(`<div class="card"><h4>No records for ${escapeHtml(bid)}</h4></div>`);
+    document.getElementById('traceResult').innerHTML = out.join('');
+  }
+};
+
+/* =========================
+   Sidebar nav behavior + UX
+   ========================= */
+function go(tab){
+  document.querySelectorAll('.nav a').forEach(x=> x.classList.remove('active-link'));
+  const link = document.querySelector(`.nav a[data-tab="${tab}"]`);
+  if(link) link.classList.add('active-link');
+  document.querySelectorAll('.tab-content').forEach(x=> x.classList.remove('active'));
+  const el = document.getElementById(tab);
+  if(el) el.classList.add('active');
+  if(tab === 'stockLevels') Charts.stockHealth();
+  if(tab === 'meatYields') Charts.yields();
+  if(window.innerWidth <= 900){ sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+}
+(function initNav(){
+  document.querySelectorAll('.nav a').forEach(a=> a.addEventListener('click', ()=> go(a.getAttribute('data-tab'))));
+})();
+
+/* ============================
+   Seed data + initial render
+   ============================ */
+(function seed(){
+  const stored = localStorage.getItem('meatStore');
+  if(stored){
+    try{ const obj = JSON.parse(stored); if(obj && Object.keys(obj).length){ Object.keys(Store).forEach(k=> Store[k] = obj[k] || []); return; } } catch(e){}
+  }
+
+  // Products
+  const p1 = {productId:'P001', name:'Beef Ribeye', batchId:'B001', animal:'Beef', cut:'Ribeye', processingDate:H.today(), storageReq:'Freezer -18°C', shelfLifeDays:45, packaging:'Vacuum', supplier:'Farm A'};
+  const p2 = {productId:'P001', name:'Beef Ribeye', batchId:'B002', animal:'Beef', cut:'Ribeye', processingDate:H.today(), storageReq:'Freezer -18°C', shelfLifeDays:30, packaging:'Vacuum', supplier:'Farm A'};
+  const p3 = {productId:'P002', name:'Chicken Breast', batchId:'C001', animal:'Chicken', cut:'Breast', processingDate:H.today(), storageReq:'Chiller 4°C', shelfLifeDays:7, packaging:'Tray', supplier:'Farm B'};
+  Store.products.push(p1,p2,p3);
+
+  // inventory
+  Store.inventory.push(
+    {productId:'P001', batchId:'B001', name:'Beef Ribeye', livestockStatus:'Available', meatCuts:'Ribeye', quantityKg:180, processingDate:p1.processingDate, processingUnit:'Unit A'},
+    {productId:'P001', batchId:'B002', name:'Beef Ribeye', livestockStatus:'Incoming', meatCuts:'Ribeye', quantityKg:40, processingDate:p2.processingDate, processingUnit:'Unit A'},
+    {productId:'P002', batchId:'C001', name:'Chicken Breast', livestockStatus:'Available', meatCuts:'Breast', quantityKg:120, processingDate:p3.processingDate, processingUnit:'Unit B'}
+  );
+
+  // stock with arrival timestamps to demonstrate FIFO
+  Store.stock.push(
+    {productId:'P001', batchId:'B001', name:'Beef Ribeye', facilityName:'Freezer A', facilityId:'FZ-A', location:'Warehouse 1', stockKg:180, expiry: datePlusDays(p1.processingDate,45), status:'High', restockNeeded:false, arrivalTs: new Date(Date.now()-1000*60*60*24*9).toISOString() },
+    {productId:'P001', batchId:'B002', name:'Beef Ribeye', facilityName:'Freezer A', facilityId:'FZ-A', location:'Warehouse 1', stockKg:40, expiry: datePlusDays(p2.processingDate,30), status:'Low', restockNeeded:true, arrivalTs: new Date(Date.now()-1000*60*60*24*2).toISOString() },
+    {productId:'P002', batchId:'C001', name:'Chicken Breast', facilityName:'Chiller 1', facilityId:'CH-1', location:'Warehouse 2', stockKg:120, expiry: datePlusDays(p3.processingDate,7), status:'High', restockNeeded:false, arrivalTs: new Date(Date.now()-1000*60*60*24*1).toISOString() }
+  );
+
+  Store.storage.push({warehouseId:'WH-01', productId:'P001', batchId:'B001', temperatureC:-18, humidityPct:66, ts:new Date().toLocaleString()});
+  Store.yields.push({batchId:'B001', activity:'Deboning', totalKg:200, meatKg:180, trimKg:12, bonesKg:6, offalKg:2, ts:new Date().toISOString()});
+})();
+
+function datePlusDays(dateStr, days){
+  const d = new Date(dateStr); d.setDate(d.getDate() + Number(days)); return d.toISOString().slice(0,10);
+}
+
+/* =====================
+   Rotation control radios
+   ===================== */
+document.addEventListener('change', (e)=>{
+  if(e.target && e.target.name === 'sideRotation'){ if(e.target.checked){ Rotation.setMode(e.target.value); } }
+});
+Rotation.setMode('fefo');
+
+/* ===============================
+   Sidebar open/close for mobile
+   =============================== */
+const sidebarEl = document.getElementById('sidebar'); const menuBtn = document.getElementById('menuBtn'); const overlayEl = document.getElementById('overlay');
+if(menuBtn) menuBtn.addEventListener('click', ()=> { sidebarEl.classList.add('open'); overlayEl.classList.add('show'); });
+if(overlayEl) overlayEl.addEventListener('click', ()=> { sidebarEl.classList.remove('open'); overlayEl.classList.remove('show'); });
+
+/* ======================
+   Summary periodic update
+   ====================== */
+setInterval(()=>{ Render.summary(); }, 3000);
+
+/* ======================
+   Expose some globals
+   ====================== */
+window.Store = Store; window.Render = Render; window.H = H; window.Persistence = Persistence; window.Rotation = Rotation; window.UI = UI;
+
+/* ======================
+   Utility functions
+   ====================== */
+function escapeHtml(s){ if(s===undefined || s===null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function unescapeHtml(s){ return s; }
+
+/* ==========
+   Keyboard UX
+   ========== */
+window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape'){ try{ modal.close(); }catch(e){} sidebarEl?.classList.remove('open'); overlayEl?.classList.remove('show'); } });
+
+/* =======================
+   AUTH: login/create logic
+   ======================= */
+const loginScreen = document.getElementById('loginScreen');
+const appMain = document.getElementById('appMain');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+
+document.getElementById('btnDoLogin').addEventListener('click', doLogin);
+document.getElementById('btnGuest').addEventListener('click', ()=>{ localStorage.setItem('meat_auth', JSON.stringify({user:'Guest'})); enterApp(); });
+document.getElementById('btnCreate').addEventListener('click', createAccount);
+
+function doLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  const users = JSON.parse(localStorage.getItem('meat_users')||'{}');
+  const okDefault = (u==='sabbir123' && p==='sabbir11');
+  const okUser = users[u] && users[u]===p;
+  if(okDefault || okUser){
+    localStorage.setItem('meat_auth', JSON.stringify({user:u}));
+    enterApp();
+  } else {
+    msg('Wrong ID or password');
+  }
+}
+function createAccount(){
+  const nu = document.getElementById('newUser').value.trim();
+  const np = document.getElementById('newPass').value.trim();
+  if(!nu || !np) return msg('Enter new user & password');
+  const users = JSON.parse(localStorage.getItem('meat_users')||'{}');
+  if(users[nu]) return msg('User already exists');
+  users[nu]=np;
+  localStorage.setItem('meat_users', JSON.stringify(users));
+  msg('Account created. You can login now.');
+}
+function msg(t){ document.getElementById('loginMsg').textContent = t; }
+
+function enterApp(){
+  loginScreen.style.display='none';
+  sidebar.style.display='flex';
+  appMain.style.display='block';
+  Render.all();
+}
+
+/* Auto-enter if already authenticated */
+(function initAuth(){
+  try{
+    const auth = JSON.parse(localStorage.getItem('meat_auth')||'null');
+    if(auth && auth.user){
+      enterApp();
+    }
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
